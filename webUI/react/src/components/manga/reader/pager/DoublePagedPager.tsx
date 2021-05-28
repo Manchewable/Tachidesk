@@ -34,10 +34,12 @@ export default function DoublePagedPager(props: IReaderProps) {
     const classes = useStyles(settings)();
 
     const selfRef = useRef<HTMLDivElement>(null);
+
     const pagesRef = useRef<HTMLImageElement[]>([]);
+    const pageLoaded = useRef<boolean[]>(Array(pages.length).fill(false));
 
     const pagesDisplayed = useRef<number>(0);
-    const pageLoaded = useRef<boolean[]>(Array(pages.length).fill(false));
+    const curRef = useRef<HTMLDivElement>(null);
 
     function setPagesToDisplay() {
         pagesDisplayed.current = 0;
@@ -63,10 +65,41 @@ export default function DoublePagedPager(props: IReaderProps) {
         }
     }
 
+    function swpieLeft(speed: number, callback: () => void) {
+        if (curRef.current) {
+            const box = curRef.current.getBoundingClientRect();
+            if (box.x + box.width < 0) {
+                callback();
+                return;
+            }
+            curRef.current.style.marginLeft = `${box.x - speed}px`;
+            const moveTimeout = setTimeout(() => {
+                swpieLeft(speed * 1.15, callback);
+                clearInterval(moveTimeout);
+            }, 5);
+        }
+    }
+
+    function swpieRight(speed: number, callback: () => void) {
+        if (curRef.current) {
+            const box = curRef.current.getBoundingClientRect();
+            if (box.x > window.innerWidth) {
+                callback();
+                return;
+            }
+            curRef.current.style.marginRight = `${box.x - speed}px`;
+            const moveTimeout = setTimeout(() => {
+                swpieRight(speed * 1.15, callback);
+                clearInterval(moveTimeout);
+            }, 5);
+        }
+    }
+
     function displayPages() {
         if (pagesDisplayed.current === 2) {
             ReactDOM.render(
                 <DoublePage
+                    ref={curRef}
                     key={curPage}
                     index={curPage}
                     image1src={pages[curPage].src}
@@ -78,6 +111,7 @@ export default function DoublePagedPager(props: IReaderProps) {
         } else {
             ReactDOM.render(
                 <Page
+                    ref={curRef}
                     key={curPage}
                     index={curPage}
                     src={(pagesDisplayed.current === 1) ? pages[curPage].src : ''}
@@ -108,7 +142,10 @@ export default function DoublePagedPager(props: IReaderProps) {
     function nextPage() {
         if (curPage < pages.length - 1) {
             const nextCurPage = curPage + pagesDisplayed.current;
-            setCurPage((nextCurPage >= pages.length) ? pages.length - 1 : nextCurPage);
+            // setCurPage((nextCurPage >= pages.length) ? pages.length - 1 : nextCurPage);
+            swpieLeft(1, () => {
+                setCurPage((nextCurPage >= pages.length) ? pages.length - 1 : nextCurPage);
+            });
         } else if (settings.loadNextonEnding) {
             nextChapter();
         }
@@ -117,7 +154,10 @@ export default function DoublePagedPager(props: IReaderProps) {
     function prevPage() {
         if (curPage > 0) {
             const nextCurPage = curPage - pagesToGoBack();
-            setCurPage((nextCurPage < 0) ? 0 : nextCurPage);
+            // setCurPage((nextCurPage < 0) ? 0 : nextCurPage);
+            swpieRight(1, () => {
+                setCurPage((nextCurPage < 0) ? 0 : nextCurPage);
+            });
         } else {
             prevChapter();
         }
